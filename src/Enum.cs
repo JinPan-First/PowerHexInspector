@@ -7,6 +7,7 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
         Oct = 8,
         Dec = 10,
         Hex = 16,
+        Fra = 100,
         Ascii = 256,
     }
 
@@ -14,14 +15,5 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
     {
         LittleEndian = 0,
         BigEndian = 1,
-    }
-
-    public enum BitLength
-    {
-        BYTE = 8,
-        WORD = 16,
-        DWORD = 32,
-        QWORD = 64,
-        UNLIMITED = -1,
     }
 }

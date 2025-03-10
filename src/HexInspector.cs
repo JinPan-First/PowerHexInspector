@@ -43,16 +43,6 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
                         Action = (e) => true
                     }
                 );
-                results.Add
-                (
-                    new Result
-                    {
-                        Title = $"Usage 2: {query.ActionKeyword} [format] [value]",
-                        SubTitle = "[format]: h/H for hex, b/B for binary, d/D for decimal, o/O for octal, a/A for ascii",
-                        IcoPath = IconPath,
-                        Action = (e) => true
-                    }
-                );
                 return results;
             }
 
@@ -63,7 +53,7 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
                 return checkRes;
             }
 
-            converter.is_upper = isUpper;
+            converter.is_upper = true;
             conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Oct), Base.Oct));
             conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Dec), Base.Dec));
             conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Hex), Base.Hex));
@@ -79,7 +69,7 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
                     {
                         Title = res.Formated,
                         SubTitle = $"{type.ToString().ToUpper()} "
-                                 + $"({settings.BitLength}{(type == Base.Bin || type == Base.Hex || type == Base.Ascii ? $" {settings.OutputEndian}" : "")})",
+                                 + $"{(type == Base.Bin || type == Base.Hex || type == Base.Ascii ? $" ({settings.OutputEndian})" : "")}",
                         IcoPath = IconPath,
                         Action = (e) =>
                         {
@@ -92,27 +82,11 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
             return results;
         }
 
-        private (bool vaild, List<Result> checkRes) CheckInput(Base queryBase, string queryValue)
+        private static (bool vaild, List<Result> checkRes) CheckInput(Base queryBase, string queryValue)
         {
-            if (queryBase == Base.Invalid ||
-                (queryBase == Base.Ascii && queryValue.Length == 0))
+            if (queryBase == Base.Invalid || (queryBase == Base.Ascii && queryValue.Length == 0))
             {
                 return (vaild: false, checkRes: []);
-            }
-
-            if (settings.BitLength == BitLength.UNLIMITED && queryBase != Base.Ascii && queryValue.Contains('-'))
-            {
-                return 
-                    (vaild:false,
-                    checkRes: new List<Result> {
-                        new Result
-                        {
-                            Title = "Negative number is not supported for unlimited bit length",
-                            SubTitle = "Please select a limited bit length for negative number in settings",
-                            IcoPath = IconPath,
-                            Action = (e) => true
-                        }
-                    });
             }
 
             return (vaild: true, checkRes: null);
@@ -130,7 +104,7 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
             {
                 Log.Info($"Unhandled Exception: {e.Message} {e.StackTrace}", typeof(Main));
                 // Return Error message
-                return new List<Result> {
+                return [
                     new Result
                     {
                         Title = "Unhandled Exception",
@@ -142,7 +116,7 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
                             return true;
                         }
                     }
-                };
+                ];
             }
 
             return results;
@@ -165,13 +139,13 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
 
         public IEnumerable<PluginAdditionalOption> AdditionalOptions { get; } = new List<PluginAdditionalOption>()
         {
-            new PluginAdditionalOption {
+            new() {
                 Key = "SplitBinary",
                 DisplayLabel = "Split Binary",
                 DisplayDescription = "Split binary into 4-bit groups",
                 Value = true,
             },
-            new PluginAdditionalOption {
+            new() {
                 Key = "InputEndian",
                 DisplayLabel = "Input Endian",
                 DisplayDescription = "Little or Big Endian setting for input, only for binary and hexadecimal",
@@ -183,7 +157,7 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
                     new KeyValuePair<string, string>("Big Endian", "1"),
                 ]
             },
-            new PluginAdditionalOption {
+            new() {
                 Key = "OutputEndian",
                 DisplayLabel = "Output Endian",
                 DisplayDescription = "Little or Big Endian setting for output, only for binary and hexadecimal",
@@ -193,21 +167,6 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
                 [
                     new KeyValuePair<string, string>("Little Endian", "0"),
                     new KeyValuePair<string, string>("Big Endian", "1"),
-                ]
-            },
-            new PluginAdditionalOption {
-                Key = "BitLength",
-                DisplayLabel = "Bit Lengths",
-                DisplayDescription = "Select the bit length for the output, influence negative number",
-                PluginOptionType = PluginAdditionalOption.AdditionalOptionType.Combobox,
-                ComboBoxValue = (int)BitLength.UNLIMITED,
-                ComboBoxItems =
-                [
-                    new KeyValuePair<string, string>("BYTE", "8"),
-                    new KeyValuePair<string, string>("WORD", "16"),
-                    new KeyValuePair<string, string>("DWORD", "32"),
-                    new KeyValuePair<string, string>("QWORD", "64"),
-                    new KeyValuePair<string, string>("UNLIMITED", "-1"),
                 ]
             }
         };

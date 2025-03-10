@@ -20,7 +20,6 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
             queryBase = Base.Invalid;
             queryValue = "";
             isUpper = false;
-
             // Use C-Style: (only allow lowercase 'x' and 'b')
             // {value}   -> Decimal
             // 0{value}  -> Octal
@@ -29,7 +28,7 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
             // "{value}" -> ASCII
             if (terms.Count == 1 || terms[0][0] == '"')
             {
-                string decimalPattern = @$"^[+-]?([1-9][0-9{FilterPattern}]*)$";
+                string decimalPattern = @$"^[+-]?([1-9][0-9{FilterPattern}]*|0)(\.[0-9{FilterPattern}]+)?$";
                 string octalPattern   = @$"^[+-]?(0[0-7{FilterPattern}]+)$";
                 string hexPattern     = @$"^[+-]?(0x[0-9a-fA-F{FilterPattern}]+)$";
                 string binaryPattern  = @$"^[+-]?(0b[01{FilterPattern}]+)$";
@@ -37,8 +36,13 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
 
                 if (Regex.IsMatch(raw, decimalPattern) || raw == "0" || raw == "-0")
                 {
-                    queryBase = Base.Dec;
-                    queryValue = raw;
+                    if(raw.Contains(".")) {
+                        queryBase = Base.Fra;
+                        queryValue = raw;
+                    } else {
+                        queryBase = Base.Dec;
+                        queryValue = raw;
+                    }
                 }
                 else if (Regex.IsMatch(raw, octalPattern))
                 {
@@ -60,20 +64,6 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
                     queryBase = Base.Ascii;
                     queryValue = raw[1..^1]; // only remove the first and last double quotes
                 }
-            }
-            else if (terms.Count >= 2) // Use specific Format: {Keyword} [Format] [Value]
-            {
-                queryBase = terms[0].ToLower() switch
-                {
-                    "h" => Base.Hex,
-                    "b" => Base.Bin,
-                    "d" => Base.Dec,
-                    "o" => Base.Oct,
-                    "a" => Base.Ascii,
-                    _ => Base.Invalid   
-                };
-                isUpper = char.IsUpper(terms[0][0]);
-                queryValue = raw[terms[0].Length..].Trim();
             }
 
             if (queryBase != Base.Ascii)

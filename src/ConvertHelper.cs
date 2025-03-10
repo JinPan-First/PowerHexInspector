@@ -14,7 +14,7 @@ public class Convert(SettingsHelper settingHelper)
     private readonly SettingsHelper settings = settingHelper;
     public bool is_upper;
 
-    private string HexToBigEndian(string hex)
+    private static string HexToBigEndian(string hex)
     {
         if (hex.Length < 2)
         {
@@ -33,7 +33,7 @@ public class Convert(SettingsHelper settingHelper)
         return string.Join("", splited);
     }
 
-    private string BinToBigEndian(string bin)
+    private static string BinToBigEndian(string bin)
     {
         if (bin.Length < 8)
         {
@@ -52,17 +52,17 @@ public class Convert(SettingsHelper settingHelper)
         return string.Join("", splited);
     }
 
-    private string HexToLittleEndian(string hex)
+    private static string HexToLittleEndian(string hex)
     {
         return HexToBigEndian(hex); // Same logic
     }
 
-    private string BinToLittleEndian(string bin)
+    private static string BinToLittleEndian(string bin)
     {
         return BinToBigEndian(bin); // Same logic
     }
 
-    private string SplitBinary(string bin)
+    private static string SplitBinary(string bin)
     {
         if (bin.Length % 4 != 0)
         {
@@ -109,13 +109,13 @@ public class Convert(SettingsHelper settingHelper)
         return new ConvertResult(bin, bin);
     }
 
-    public ConvertResult OctFormat(string oct)
+    public static ConvertResult OctFormat(string oct)
     {
         // No need to change octal format
         return new ConvertResult(oct, oct);
     }
 
-    public ConvertResult DecFormat(string dec)
+    public static ConvertResult DecFormat(string dec)
     {
         return new ConvertResult(dec, dec);
     }
@@ -128,7 +128,7 @@ public class Convert(SettingsHelper settingHelper)
             ascii = new string(ascii.Reverse().ToArray());
         }
 
-        StringBuilder strb = new StringBuilder(ascii);
+        StringBuilder strb = new(ascii);
         for (int i = 0; i < strb.Length; i++)
         {
             if (char.IsControl(strb[i]))
@@ -142,53 +142,59 @@ public class Convert(SettingsHelper settingHelper)
     }
 
     // Ascii to integer(Decimal)
-    public string AsciiToInt(string ascii) => 
-        System.Convert.ToInt64(
-            System.BitConverter
-                .ToString(System.Text.Encoding.ASCII.GetBytes(ascii) // ASCII to hex string, e.g. "AB" -> "42-41"
-                .Reverse().ToArray()) // Convert to little endian
-                .Replace("-", ""),
+    public static string AsciiToInt(string ascii)
+    {
+        return System.Convert.ToInt64(
+            System.Convert.ToHexString([.. Encoding.ASCII.GetBytes(ascii) // ASCII to hex string, e.g. "AB" -> "42-41"
+                .Reverse()]),
             (int)Base.Hex
         ).ToString();
+    }
 
     // integer(Decimal) to Ascii
-    public string IntToAscii(string dec) => 
-        new string (
-            System.Text.Encoding.ASCII.GetString(
-                System.BitConverter.GetBytes(System.Convert.ToInt64(dec, 10)))
+    public static string IntToAscii(string dec)
+    {
+        return new(
+            [.. Encoding.ASCII.GetString(
+                BitConverter.GetBytes(System.Convert.ToInt64(dec, 10)))
                 .TrimEnd('\0') // Remove null character
-                .Reverse()
-                .ToArray()
+                .Reverse()]
             );
+    }
 
     // Convert string to BigInteger(Decimal)
-    public BigInteger BigIntegerConvert(string input, Base fromBase) => fromBase switch
+    public static BigInteger BigIntegerConvert(string input, Base fromBase)
     {
-        Base.Bin => BigInteger.Parse("0"+input, System.Globalization.NumberStyles.BinaryNumber),
-        Base.Oct => new Func<BigInteger>( // BigInterger.Parse() does not support octal, fxxk mixxxxxft
-            () => {
-                input = input.Replace(" ", ""); // Remove space
-                BigInteger result = 0;
-                for (int i = 0; i < input.Length; i++)
+        return fromBase switch
+        {
+            Base.Bin => BigInteger.Parse("0" + input, System.Globalization.NumberStyles.BinaryNumber),
+            Base.Oct => new Func<BigInteger>( // BigInterger.Parse() does not support octal, fxxk mixxxxxft
+                () =>
                 {
-                    result += (input[i] - '0') * BigInteger.Pow(8, input.Length - i - 1);
+                    input = input.Replace(" ", ""); // Remove space
+                    BigInteger result = 0;
+                    for (int i = 0; i < input.Length; i++)
+                    {
+                        result += (input[i] - '0') * BigInteger.Pow(8, input.Length - i - 1);
+                    }
+                    return result;
                 }
-                return result;
-            }
-        )(),
-        Base.Dec => BigInteger.Parse(input),
-        Base.Hex => BigInteger.Parse("0"+input, System.Globalization.NumberStyles.HexNumber),
-        Base.Ascii => new Func<BigInteger>(
-            () => {
-                byte[] bytes = System.Text.Encoding.ASCII.GetBytes(input).Reverse().ToArray();
-                return new BigInteger(bytes);
-            }
-        )(),
-        _ => throw new System.ArgumentException("Invalid base", nameof(fromBase))
-    };
+            )(),
+            Base.Dec => BigInteger.Parse(input),
+            Base.Hex => BigInteger.Parse("0" + input, System.Globalization.NumberStyles.HexNumber),
+            Base.Ascii => new Func<BigInteger>(
+                () =>
+                {
+                    byte[] bytes = Encoding.ASCII.GetBytes(input).Reverse().ToArray();
+                    return new BigInteger(bytes);
+                }
+            )(),
+            _ => throw new ArgumentException("Invalid base", nameof(fromBase))
+        };
+    }
 
     // Convert BigInteger(Decimal) to string
-    public string ConvertBigInteger(BigInteger input, Base toBase) => toBase switch
+    public static string ConvertBigInteger(BigInteger input, Base toBase) => toBase switch
     {
         Base.Bin => input.ToString("B"),
         Base.Oct => new Func<string>(
@@ -212,10 +218,10 @@ public class Convert(SettingsHelper settingHelper)
         Base.Ascii => new Func<string>(
             () => {
                 byte[] bytes = input.ToByteArray().Reverse().ToArray();
-                return System.Text.Encoding.ASCII.GetString(bytes);
+                return Encoding.ASCII.GetString(bytes);
             }
         )(),
-        _ => throw new System.ArgumentException("Invalid base", nameof(toBase))
+        _ => throw new ArgumentException("Invalid base", nameof(toBase))
     };
 
     public ConvertResult UniversalConvert(string input, Base fromBase, Base toBase)
@@ -234,27 +240,9 @@ public class Convert(SettingsHelper settingHelper)
 
         try
         {
-            string dec = settings.BitLength switch
-            {
-                BitLength.BYTE  when fromBase != Base.Ascii => System.Convert.ToSByte(input, (int)fromBase).ToString(),
-                BitLength.WORD  when fromBase != Base.Ascii => System.Convert.ToInt16(input, (int)fromBase).ToString(),
-                BitLength.DWORD when fromBase != Base.Ascii => System.Convert.ToInt32(input, (int)fromBase).ToString(),
-                BitLength.QWORD when fromBase != Base.Ascii => System.Convert.ToInt64(input, (int)fromBase).ToString(),
-                not BitLength.UNLIMITED when fromBase == Base.Ascii => AsciiToInt(input),
-                BitLength.UNLIMITED => BigIntegerConvert(input, fromBase).ToString(),
-                _  => throw new ArgumentException("Invalid base", nameof(fromBase))
-            };
+            string dec = BigIntegerConvert(input, fromBase).ToString();
 
-            string raw = settings.BitLength switch
-            {
-                BitLength.BYTE  when toBase != Base.Ascii => System.Convert.ToString(System.Convert.ToSByte(dec, 10), (int)toBase),
-                BitLength.WORD  when toBase != Base.Ascii => System.Convert.ToString(System.Convert.ToInt16(dec, 10), (int)toBase),
-                BitLength.DWORD when toBase != Base.Ascii => System.Convert.ToString(System.Convert.ToInt32(dec, 10), (int)toBase),
-                BitLength.QWORD when toBase != Base.Ascii => System.Convert.ToString(System.Convert.ToInt64(dec, 10), (int)toBase),
-                not BitLength.UNLIMITED when toBase == Base.Ascii => IntToAscii(dec),
-                BitLength.UNLIMITED => ConvertBigInteger(BigInteger.Parse(dec), toBase),
-                _  => throw new ArgumentException("Invalid base", nameof(toBase))
-            };
+            string raw = ConvertBigInteger(BigInteger.Parse(dec), toBase);
 
             string formated = toBase switch
             {
