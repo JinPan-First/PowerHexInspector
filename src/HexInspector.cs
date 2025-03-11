@@ -53,12 +53,15 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
                 return checkRes;
             }
 
-            converter.is_upper = true;
+            
             conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Oct), Base.Oct));
             conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Dec), Base.Dec));
             conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Hex), Base.Hex));
             conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Bin), Base.Bin));
             conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Ascii), Base.Ascii));
+            conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Fra16), Base.Fra16));
+            conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Fra32), Base.Fra32));
+            conversions.Add((converter.UniversalConvert(queryValue, queryBase, Base.Fra64), Base.Fra64));
 
             // Create result list
             foreach ((ConvertResult res, Base type) in conversions)

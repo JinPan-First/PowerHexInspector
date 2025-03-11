@@ -7,7 +7,9 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
         Oct = 8,
         Dec = 10,
         Hex = 16,
-        Fra = 100,
+        Fra16 = 32,
+        Fra32 = 64,
+        Fra64 = 128,
         Ascii = 256,
     }
 

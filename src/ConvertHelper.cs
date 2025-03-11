@@ -14,54 +14,30 @@ public class Convert(SettingsHelper settingHelper)
     private readonly SettingsHelper settings = settingHelper;
     public bool is_upper;
 
-    private static string HexToBigEndian(string hex)
+    private static string ToBigEndian(string value, int chunkSize)
     {
-        if (hex.Length < 2)
+        if (value.Length < chunkSize)
         {
-            return hex; // No need to reverse
+            return value; // No need to reverse
         }
-        if (hex.Length % 2 != 0)
+        if (value.Length % chunkSize != 0)
         {
-            hex = hex.PadLeft(hex.Length + 1, '0');
+            value = value.PadLeft(value.Length + (chunkSize - value.Length % chunkSize), '0');
         }
-        string[] splited = new string[hex.Length / 2];
-        for (int i = 0; i < hex.Length / 2; i++)
+        string[] splited = new string[value.Length / chunkSize];
+        for (int i = 0; i < splited.Length; i++)
         {
-            splited[i] = hex.Substring(i * 2, 2);
+            splited[i] = value.Substring(i * chunkSize, chunkSize);
         }
         Array.Reverse(splited);
         return string.Join("", splited);
     }
 
-    private static string BinToBigEndian(string bin)
-    {
-        if (bin.Length < 8)
-        {
-            return bin; // No need to reverse
-        }
-        if (bin.Length % 8 != 0)
-        {
-            bin = bin.PadLeft(bin.Length + (8 - bin.Length % 8), '0');
-        }
-        string[] splited = new string[bin.Length / 8];
-        for (int i = 0; i < bin.Length / 8; i++)
-        {
-            splited[i] = bin.Substring(i * 8, 8);
-        }
-        Array.Reverse(splited);
-        return string.Join("", splited);
-    }
+    private static string HexToBigEndian(string hex) => ToBigEndian(hex, 2);
+    private static string BinToBigEndian(string bin) => ToBigEndian(bin, 8);
 
-    private static string HexToLittleEndian(string hex)
-    {
-        return HexToBigEndian(hex); // Same logic
-    }
-
-    private static string BinToLittleEndian(string bin)
-    {
-        return BinToBigEndian(bin); // Same logic
-    }
-
+    private static string HexToLittleEndian(string hex) => HexToBigEndian(hex);
+    private static string BinToLittleEndian(string bin) => BinToBigEndian(bin);
     private static string SplitBinary(string bin)
     {
         if (bin.Length % 4 != 0)
@@ -168,7 +144,7 @@ public class Convert(SettingsHelper settingHelper)
         return fromBase switch
         {
             Base.Bin => BigInteger.Parse("0" + input, System.Globalization.NumberStyles.BinaryNumber),
-            Base.Oct => new Func<BigInteger>( // BigInterger.Parse() does not support octal, fxxk mixxxxxft
+            Base.Oct => new Func<BigInteger>(
                 () =>
                 {
                     input = input.Replace(" ", ""); // Remove space
@@ -186,6 +162,33 @@ public class Convert(SettingsHelper settingHelper)
                 () =>
                 {
                     byte[] bytes = Encoding.ASCII.GetBytes(input).Reverse().ToArray();
+                    return new BigInteger(bytes);
+                }
+            )(),
+            Base.Fra16 => new Func<BigInteger>(
+                () =>
+                {
+                    // Convert float16 to bytes, then to BigInteger
+                    Half half = Half.Parse(input);
+                    byte[] bytes = BitConverter.GetBytes(half);
+                    return new BigInteger(bytes);
+                }
+            )(),
+            Base.Fra32 => new Func<BigInteger>(
+                () =>
+                {
+                    // Convert float32 to bytes, then to BigInteger
+                    float float32 = float.Parse(input);
+                    byte[] bytes = BitConverter.GetBytes(float32);
+                    return new BigInteger(bytes);
+                }
+            )(),
+            Base.Fra64 => new Func<BigInteger>(
+                () =>
+                {
+                    // Convert float64 to bytes, then to BigInteger
+                    double float64 = double.Parse(input);
+                    byte[] bytes = BitConverter.GetBytes(float64);
                     return new BigInteger(bytes);
                 }
             )(),
@@ -221,6 +224,60 @@ public class Convert(SettingsHelper settingHelper)
                 return Encoding.ASCII.GetString(bytes);
             }
         )(),
+        Base.Fra16 => new Func<string>(
+            () => {
+                // Convert BigInteger to bytes, then to float16
+                byte[] bytes = input.ToByteArray();
+                if (bytes.Length < 2)
+                {
+                    // Pad with zeros if the byte array is too short
+                    bytes = bytes.Concat(new byte[2 - bytes.Length]).ToArray();
+                }
+                else if (bytes.Length > 2)
+                {
+                    // Truncate to 2 bytes if the byte array is too long
+                    bytes = bytes.Take(2).ToArray();
+                }
+                Half half = BitConverter.ToHalf(bytes, 0);
+                return half.ToString();
+            }
+        )(),
+        Base.Fra32 => new Func<string>(
+            () => {
+                // Convert BigInteger to bytes, then to float32
+                byte[] bytes = input.ToByteArray();
+                if (bytes.Length < 4)
+                {
+                    // Pad with zeros if the byte array is too short
+                    bytes = bytes.Concat(new byte[4 - bytes.Length]).ToArray();
+                }
+                else if (bytes.Length > 4)
+                {
+                    // Truncate to 4 bytes if the byte array is too long
+                    bytes = bytes.Take(4).ToArray();
+                }
+                float float32 = BitConverter.ToSingle(bytes, 0);
+                return float32.ToString();
+            }
+        )(),
+        Base.Fra64 => new Func<string>(
+            () => {
+                // Convert BigInteger to bytes, then to float64
+                byte[] bytes = input.ToByteArray();
+                if (bytes.Length < 8)
+                {
+                    // Pad with zeros if the byte array is too short
+                    bytes = bytes.Concat(new byte[8 - bytes.Length]).ToArray();
+                }
+                else if (bytes.Length > 8)
+                {
+                    // Truncate to 8 bytes if the byte array is too long
+                    bytes = bytes.Take(8).ToArray();
+                }
+                double float64 = BitConverter.ToDouble(bytes, 0);
+                return float64.ToString();
+            }
+        )(),
         _ => throw new ArgumentException("Invalid base", nameof(toBase))
     };
 
@@ -251,6 +308,9 @@ public class Convert(SettingsHelper settingHelper)
                 Base.Dec => DecFormat(raw).Formated,
                 Base.Hex => HexFormat(raw, is_upper).Formated,
                 Base.Ascii => AsciiFormat(raw).Formated,
+                Base.Fra16 => raw, // No additional formatting for float16
+                Base.Fra32 => raw, // No additional formatting for float32
+                Base.Fra64 => raw, // No additional formatting for float64
                 _ => raw
             };
 

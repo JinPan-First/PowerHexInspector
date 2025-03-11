@@ -9,7 +9,7 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
 
         private static string ReplaceFirstOccurrence(string input, string pattern, string replacement)
         {
-            Regex regex = new Regex(pattern);
+            Regex regex = new(pattern);
             return regex.Replace(input, replacement, 1);
         }
 
@@ -19,8 +19,8 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
             var raw = query.RawUserQuery.Trim().Substring(query.ActionKeyword.Length).Trim();
             queryBase = Base.Invalid;
             queryValue = "";
-            isUpper = false;
-            // Use C-Style: (only allow lowercase 'x' and 'b')
+            isUpper = true;
+            // Use C-Style:
             // {value}   -> Decimal
             // 0{value}  -> Octal
             // 0x{value} -> Hex
@@ -28,18 +28,39 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
             // "{value}" -> ASCII
             if (terms.Count == 1 || terms[0][0] == '"')
             {
-                string decimalPattern = @$"^[+-]?([1-9][0-9{FilterPattern}]*|0)(\.[0-9{FilterPattern}]+)?$";
-                string octalPattern   = @$"^[+-]?(0[0-7{FilterPattern}]+)$";
-                string hexPattern     = @$"^[+-]?(0x[0-9a-fA-F{FilterPattern}]+)$";
-                string binaryPattern  = @$"^[+-]?(0b[01{FilterPattern}]+)$";
-                string asciiPattern   = @$"^"".*""$";
+                string decimalPattern = @"^[+-]?([1-9][0-9,_]*|0)(\.[0-9,_]+)?([hH]|[fF]|[dD])?$";
+                string octalPattern   = @"^[+-]?(0[0-7,_]+)$";
+                string hexPattern     = @"^[+-]?(0[Xx][0-9a-fA-F,_]+)$";
+                string binaryPattern  = @"^[+-]?(0[Bb][01,_]+)$";
+                string asciiPattern   = "^\".*\"$";
 
                 if (Regex.IsMatch(raw, decimalPattern) || raw == "0" || raw == "-0")
                 {
-                    if(raw.Contains(".")) {
-                        queryBase = Base.Fra;
-                        queryValue = raw;
-                    } else {
+                    if (raw.Contains('.'))
+                    {
+                        if (raw.EndsWith("h", StringComparison.OrdinalIgnoreCase))
+                        {
+                            queryBase = Base.Fra16;
+                            queryValue = raw[..^1];
+                        }
+                        else if (raw.EndsWith("f", StringComparison.OrdinalIgnoreCase))
+                        {
+                            queryBase = Base.Fra32;
+                            queryValue = raw[..^1];
+                        }
+                        else if (raw.EndsWith("d", StringComparison.OrdinalIgnoreCase))
+                        {
+                            queryBase = Base.Fra64;
+                            queryValue = raw[..^1];
+                        }
+                        else
+                        {
+                            queryBase = Base.Fra32; // Default to float32 if no suffix is provided
+                            queryValue = raw;
+                        }
+                    }
+                    else
+                    {
                         queryBase = Base.Dec;
                         queryValue = raw;
                     }
@@ -52,12 +73,12 @@ namespace Community.PowerToys.Run.Plugin.HexInspector
                 else if (Regex.IsMatch(raw, hexPattern))
                 {
                     queryBase = Base.Hex;
-                    queryValue = ReplaceFirstOccurrence(raw, "0x", "");
+                    queryValue = ReplaceFirstOccurrence(raw, "0[Xx]", "");
                 }
                 else if (Regex.IsMatch(raw, binaryPattern))
                 {
                     queryBase = Base.Bin;
-                    queryValue = ReplaceFirstOccurrence(raw, "0b", "");
+                    queryValue = ReplaceFirstOccurrence(raw, "0[Bb]", "");
                 }
                 else if (Regex.IsMatch(raw, asciiPattern))
                 {
